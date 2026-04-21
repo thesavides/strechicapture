@@ -1,30 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
   <rect width="192" height="192" rx="40" fill="#0d0d0d"/>
 
-  <!-- Tent outline (Stretchi logo shape) -->
-  <!-- Left ridge: apex to left peak -->
-  <path d="M 96,18 Q 68,44 46,68" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
-  <!-- Right ridge: apex to right peak -->
-  <path d="M 96,18 Q 124,44 146,68" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
-  <!-- Left outer fabric drape -->
-  <path d="M 46,68 Q 24,102 10,148" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <!-- Stretchi tent silhouette — two-peaked stretch tent outline -->
+  <!-- Left shoulder ridge from apex -->
+  <path d="M 96,10 C 78,28 58,42 36,57" stroke="white" stroke-width="5.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right shoulder ridge from apex -->
+  <path d="M 96,10 C 114,28 134,42 156,57" stroke="white" stroke-width="5.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Left outer fabric drape — sweeps wide -->
+  <path d="M 36,57 C 18,82 9,112 4,148" stroke="white" stroke-width="5" fill="none" stroke-linecap="round"/>
   <!-- Right outer fabric drape -->
-  <path d="M 146,68 Q 168,102 182,148" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-  <!-- Left inner curve to centre saddle -->
-  <path d="M 46,68 Q 70,86 96,82" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
-  <!-- Right inner curve to centre saddle -->
-  <path d="M 146,68 Q 122,86 96,82" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M 156,57 C 174,82 183,112 188,148" stroke="white" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- Left inner fabric — shoulder to centre saddle -->
+  <path d="M 36,57 C 56,70 76,78 96,82" stroke="white" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+  <!-- Right inner fabric — shoulder to centre saddle -->
+  <path d="M 156,57 C 136,70 116,78 96,82" stroke="white" stroke-width="4.5" fill="none" stroke-linecap="round"/>
 
-  <!-- Mic button (red circle) -->
-  <circle cx="96" cy="118" r="34" fill="#e94560"/>
-  <!-- Mic body -->
-  <rect x="87" y="98" width="18" height="32" rx="9" fill="white"/>
-  <!-- Mic arc -->
-  <path d="M 80,118 a16,16 0 0 0 32,0" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
-  <!-- Mic stand -->
-  <line x1="96" y1="134" x2="96" y2="143" stroke="white" stroke-width="4" stroke-linecap="round"/>
-  <line x1="87" y1="143" x2="105" y2="143" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <!-- Red mic circle -->
+  <circle cx="96" cy="128" r="34" fill="#e94560"/>
+  <rect x="87" y="108" width="18" height="30" rx="9" fill="white"/>
+  <path d="M 80,128 a16,16 0 0 0 32,0" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <line x1="96" y1="144" x2="96" y2="152" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <line x1="86" y1="152" x2="106" y2="152" stroke="white" stroke-width="4" stroke-linecap="round"/>
 
-  <!-- STRETCHI TALK label -->
-  <text x="96" y="185" font-family="Arial, sans-serif" font-size="13" font-weight="900" fill="white" text-anchor="middle" letter-spacing="1.5">STRETCHI TALK</text>
+  <!-- Label -->
+  <text x="96" y="184" font-family="Arial Black, Arial, sans-serif" font-size="12.5" font-weight="900" fill="white" text-anchor="middle" letter-spacing="1.5">STRETCHI TALK</text>
 </svg>
