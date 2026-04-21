@@ -1066,6 +1066,9 @@ const App = (() => {
       }
 
       const created = await resp.json();
+      if (!created || !created.id) {
+        throw new Error('Todoist returned no task ID — task may not have been created');
+      }
       if (navigator.vibrate) navigator.vibrate([40, 20, 40]);
 
       // Save to Supabase
