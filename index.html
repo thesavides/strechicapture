@@ -643,11 +643,12 @@
     <!-- Shown after successful API fetch -->
     <div id="setup-mapping" class="hidden">
       <div class="setup-divider"></div>
-      <div class="setup-section-label">Map Projects</div>
-      <div id="project-map-fields"></div>
+      <div class="setup-section-label">Projects</div>
+      <div id="project-status" style="font-size:13px;color:var(--muted);margin-bottom:8px;"></div>
 
       <div class="setup-divider"></div>
       <div class="setup-section-label">Map Team Members</div>
+      <div class="setup-subtitle" style="margin-bottom:12px;">Match each Stretchi team member to their Todoist account.</div>
       <div id="assignee-map-fields"></div>
 
       <button class="btn btn-success full-btn mt16" onclick="App.saveSetup()">Save &amp; Start Capturing</button>
@@ -1046,11 +1047,13 @@ const App = (() => {
     const dueStr     = task.due_date || 'tomorrow';
     const labels     = (task.labels || []).map(l => l.replace('@', ''));
 
-    const projectId  = cfg.project_map?.[project];
+    const projects = cfg.todoist_projects || [];
+    const projectMatch = projects.find(p => p.name.toLowerCase() === project.toLowerCase());
+    const projectId  = projectMatch?.id;
     const assigneeId = cfg.assignee_map?.[assignee];
 
     if (!projectId) {
-      toast(`⚠️ "${project}" not mapped in Setup — task will land in Todoist Inbox`);
+      toast(`⚠️ "${project}" not found in Todoist — task will land in Inbox`);
     }
 
     const body = { content, description: desc, due_string: dueStr, labels, priority: 1 };
@@ -1251,39 +1254,24 @@ const App = (() => {
   }
 
   function renderMappingFields() {
-    const projOpts = todoistProjects.map(p =>
-      `<option value="${esc(p.id)}">${esc(p.name)}</option>`
-    ).join('');
+    // Auto-match projects by name — no manual selection needed
+    const matched = [], unmatched = [];
+    STRETCHI_PROJECTS.forEach(name => {
+      const match = todoistProjects.find(p => p.name.toLowerCase() === name.toLowerCase());
+      if (match) matched.push(name);
+      else unmatched.push(name);
+    });
+
+    const statusEl = document.getElementById('project-status');
+    let statusHtml = `<span style="color:var(--success)">✓ ${matched.length} project${matched.length !== 1 ? 's' : ''} matched automatically</span>`;
+    if (unmatched.length) {
+      statusHtml += `<br><span style="color:var(--warning)">⚠ Not found in Todoist: ${unmatched.map(n => `<strong>${n}</strong>`).join(', ')} — create these projects in Todoist then reload.</span>`;
+    }
+    statusEl.innerHTML = statusHtml;
 
     const collOpts = Object.values(todoistCollabs).map(c =>
       `<option value="${esc(c.id)}">${esc(c.name || c.email)}</option>`
     ).join('');
-
-    // Project mappings
-    const pf = document.getElementById('project-map-fields');
-    pf.innerHTML = '';
-    STRETCHI_PROJECTS.forEach(name => {
-      const id = 'pmap-' + slug(name);
-      const saved = cfg?.project_map?.[name] || '';
-      pf.insertAdjacentHTML('beforeend', `
-        <div class="field">
-          <label class="field-label">${esc(name)}</label>
-          <select class="field-input" id="${id}">
-            <option value="">— Select Todoist project —</option>
-            ${projOpts}
-          </select>
-        </div>
-      `);
-      const sel = document.getElementById(id);
-      if (saved) {
-        sel.value = saved;
-      } else {
-        // Auto-match by first word
-        const kw = name.split(' ')[0].toLowerCase();
-        const match = todoistProjects.find(p => p.name.toLowerCase().includes(kw));
-        if (match) sel.value = match.id;
-      }
-    });
 
     // Assignee mappings
     const af = document.getElementById('assignee-map-fields');
@@ -1309,12 +1297,6 @@ const App = (() => {
     const userName = document.getElementById('setup-username').value.trim();
     if (!userName) { toast('Please enter your name.'); return; }
 
-    const projectMap = {};
-    STRETCHI_PROJECTS.forEach(name => {
-      const sel = document.getElementById('pmap-' + slug(name));
-      if (sel && sel.value) projectMap[name] = sel.value;
-    });
-
     const assigneeMap = {};
     STRETCHI_MEMBERS.forEach(name => {
       const sel = document.getElementById('amap-' + slug(name));
@@ -1323,10 +1305,10 @@ const App = (() => {
 
     storeCfg({
       ...cfg,
-      user_name:      userName,
-      project_map:    projectMap,
-      assignee_map:   assigneeMap,
-      setup_complete: true
+      user_name:        userName,
+      todoist_projects: todoistProjects,
+      assignee_map:     assigneeMap,
+      setup_complete:   true
     });
 
     initSpeech();
