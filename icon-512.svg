@@ -1,9 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="100" fill="#1a1a2e"/>
-  <circle cx="256" cy="215" r="118" fill="#e94560"/>
-  <rect x="222" y="128" width="68" height="124" rx="34" fill="white"/>
-  <path d="M166 215a90 90 0 0 0 180 0" stroke="white" stroke-width="18" fill="none" stroke-linecap="round"/>
-  <line x1="256" y1="305" x2="256" y2="358" stroke="white" stroke-width="18" stroke-linecap="round"/>
-  <line x1="208" y1="358" x2="304" y2="358" stroke="white" stroke-width="18" stroke-linecap="round"/>
-  <text x="256" y="470" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="58" font-weight="700" fill="white" text-anchor="middle" letter-spacing="4">STRETCHI</text>
+  <!-- Tent outline background -->
+  <path d="M 20,345 C 52,345 84,208 146,182 C 175,169 193,234 256,74 C 319,234 337,169 366,182 C 428,208 460,345 492,345"
+    stroke="rgba(255,255,255,0.12)" stroke-width="16" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Mic icon -->
+  <circle cx="256" cy="232" r="108" fill="#e94560"/>
+  <rect x="224" y="140" width="64" height="116" rx="32" fill="white"/>
+  <path d="M 180,232 a76,76 0 0 0 152,0" stroke="white" stroke-width="16" fill="none" stroke-linecap="round"/>
+  <line x1="256" y1="308" x2="256" y2="346" stroke="white" stroke-width="16" stroke-linecap="round"/>
+  <line x1="218" y1="346" x2="294" y2="346" stroke="white" stroke-width="16" stroke-linecap="round"/>
+  <!-- Label -->
+  <text x="256" y="438" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="44" font-weight="800" fill="white" text-anchor="middle" letter-spacing="4">STRETCHI TALK</text>
 </svg>

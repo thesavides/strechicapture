@@ -1,6 +1,6 @@
 {
-  "name": "Stretchi Capture",
-  "short_name": "Capture",
+  "name": "Stretchi Talk",
+  "short_name": "STRETCHI TALK",
   "description": "Voice-to-Todoist task capture for Stretchi Tents",
   "start_url": "/",
   "display": "standalone",
