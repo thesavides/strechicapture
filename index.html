@@ -413,6 +413,90 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ─── History panel ─── */
+    #screen-history {
+      justify-content: flex-end;
+      background: rgba(10,10,20,0.65);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .history-card {
+      background: var(--card);
+      border-radius: 24px 24px 0 0;
+      width: 100%;
+      max-height: 80dvh;
+      padding: 12px 20px max(24px, env(safe-area-inset-bottom, 24px));
+      transform: translateY(100%);
+      transition: transform 280ms cubic-bezier(0.32,0.72,0,1);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .history-card.open { transform: translateY(0); }
+    .history-title {
+      font-size: 16px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .history-item {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-meta { flex: 1; }
+    .history-task-name {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 3px;
+    }
+    .history-detail {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .undo-btn {
+      background: rgba(233,69,96,0.15);
+      border: 1px solid rgba(233,69,96,0.3);
+      color: var(--accent);
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .undo-btn:disabled { opacity: 0.4; }
+    .undo-btn.done {
+      background: rgba(78,204,163,0.1);
+      border-color: rgba(78,204,163,0.3);
+      color: var(--success);
+    }
+    .history-empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      padding: 32px 0;
+    }
+    .history-btn {
+      position: absolute;
+      bottom: max(24px, env(safe-area-inset-bottom, 24px));
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 8px 18px;
+      cursor: pointer;
+    }
+
     /* ─── Util ─── */
     .hidden { display: none !important; }
     .mt8 { margin-top: 8px; }
@@ -447,6 +531,8 @@
 
   <div class="status-text" id="status-text">Tap to speak</div>
   <div class="transcript-box" id="transcript-text"></div>
+
+  <button class="history-btn" onclick="App.showHistory()">Recent tasks</button>
 
   <!-- Fallback for browsers without Web Speech API -->
   <div class="fallback-wrap hidden" id="fallback-wrap">
@@ -522,6 +608,15 @@
   </div>
   <div class="success-label">Task created</div>
   <div class="success-task" id="success-task-name"></div>
+</div>
+
+<!-- ══════════════ HISTORY SCREEN ══════════════ -->
+<div id="screen-history" class="screen hidden" onclick="App.handleHistoryBgTap(event)">
+  <div class="history-card" id="history-card">
+    <div class="drag-handle"></div>
+    <div class="history-title">Recent Tasks</div>
+    <div id="history-list"></div>
+  </div>
 </div>
 
 <!-- ══════════════ SETUP SCREEN ══════════════ -->
@@ -802,11 +897,10 @@ const App = (() => {
 
       let task;
       try {
-        // Strip any markdown code fences if present
         const jsonStr = rawText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
         task = JSON.parse(jsonStr);
       } catch {
-        toast('Could not parse Claude response — edit fields manually.');
+        toast('Could not parse response — creating with @luan-review.');
         task = {
           content: transcript,
           description: '',
@@ -819,7 +913,7 @@ const App = (() => {
       }
 
       setStatus('Tap to speak');
-      showConfirmation(task);
+      autoCreateTask(task);
 
     } catch (e) {
       setStatus('Tap to speak');
@@ -891,31 +985,23 @@ const App = (() => {
     if (e.target.id === 'screen-confirm') cancelConfirm();
   }
 
-  // ── Create Todoist Task ───────────────────────────────────
-  async function createTask() {
-    const btn = document.getElementById('create-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>Creating…';
+  // ── Auto-create (no confirmation needed) ─────────────────
+  async function autoCreateTask(task) {
+    setStatus('Creating task…');
 
-    const content    = document.getElementById('field-content').value.trim();
-    const desc       = document.getElementById('field-desc').value.trim();
-    const assignee   = document.getElementById('field-assignee').value;
-    const project    = document.getElementById('field-project').value;
-    const dueStr     = document.getElementById('field-due').value.trim();
-    const labels     = getActiveLabels();
+    const content    = task.content || 'Untitled task';
+    const desc       = task.description || '';
+    const assignee   = task.assignee || 'Luan';
+    const project    = task.project || 'Luan Direct';
+    const dueStr     = task.due_date || 'tomorrow';
+    const labels     = (task.labels || []).map(l => l.replace('@', ''));
 
     const projectId  = cfg.project_map?.[project];
     const assigneeId = cfg.assignee_map?.[assignee];
 
-    const body = {
-      content,
-      description: desc,
-      due_string: dueStr || 'tomorrow',
-      labels,
-      priority: 1
-    };
+    const body = { content, description: desc, due_string: dueStr, labels, priority: 1 };
     if (projectId)  body.project_id  = projectId;
-    if (assigneeId) body.assignee_id = parseInt(assigneeId, 10);
+    if (assigneeId) body.assignee_id = assigneeId;
 
     try {
       const resp = await fetch('/todoist/tasks', {
@@ -929,15 +1015,89 @@ const App = (() => {
         throw new Error(err.error || 'Todoist error ' + resp.status);
       }
 
+      const created = await resp.json();
       if (navigator.vibrate) navigator.vibrate([40, 20, 40]);
+
+      // Save to local history
+      addToHistory({ id: created.id, content, project, assignee, dueStr, createdAt: new Date().toISOString() });
       showSuccessScreen(content);
 
     } catch (e) {
-      saveDraft({ content, desc, assignee, project, dueStr, labels });
-      toast('Saved as draft. ' + e.message);
-      btn.disabled = false;
-      btn.textContent = 'Create Task';
+      setStatus('Tap to speak');
+      toast('Failed to create task: ' + e.message);
     }
+  }
+
+  // ── Task History ──────────────────────────────────────────
+  function addToHistory(entry) {
+    try {
+      const history = JSON.parse(localStorage.getItem('stretchi_history') || '[]');
+      history.unshift(entry);
+      localStorage.setItem('stretchi_history', JSON.stringify(history.slice(0, 20)));
+    } catch {}
+  }
+
+  function showHistory() {
+    const history = JSON.parse(localStorage.getItem('stretchi_history') || '[]');
+    const list = document.getElementById('history-list');
+
+    if (history.length === 0) {
+      list.innerHTML = '<div class="history-empty">No tasks yet. Capture your first one!</div>';
+    } else {
+      list.innerHTML = history.map((t, i) => `
+        <div class="history-item" id="hist-${i}">
+          <div class="history-meta">
+            <div class="history-task-name">${esc(t.content)}</div>
+            <div class="history-detail">${esc(t.project)} · ${esc(t.assignee)} · ${formatTime(t.createdAt)}</div>
+          </div>
+          <button class="undo-btn" onclick="App.undoTask('${esc(t.id)}', ${i})" id="undo-${i}">Undo</button>
+        </div>
+      `).join('');
+    }
+
+    showScreen('history');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.getElementById('history-card').classList.add('open');
+    }));
+  }
+
+  async function undoTask(taskId, index) {
+    const btn = document.getElementById('undo-' + index);
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = '…';
+
+    try {
+      const resp = await fetch('/todoist/tasks/' + taskId, { method: 'DELETE' });
+      if (!resp.ok && resp.status !== 204) throw new Error('status ' + resp.status);
+
+      btn.textContent = 'Deleted';
+      btn.classList.add('done');
+
+      // Remove from local history
+      const history = JSON.parse(localStorage.getItem('stretchi_history') || '[]');
+      history.splice(index, 1);
+      localStorage.setItem('stretchi_history', JSON.stringify(history));
+
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Undo';
+      toast('Could not delete: ' + e.message);
+    }
+  }
+
+  function handleHistoryBgTap(e) {
+    if (e.target.id === 'screen-history') {
+      document.getElementById('history-card').classList.remove('open');
+      setTimeout(() => showScreen('main'), 220);
+    }
+  }
+
+  function formatTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }) + ' ' +
+           d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
   }
 
   function saveDraft(task) {
@@ -1129,11 +1289,13 @@ const App = (() => {
     submitFallback,
     cancelConfirm,
     handleConfirmBgTap,
-    createTask,
     showSetup,
     backFromSetup,
     fetchProjectsAndCollabs,
-    saveSetup
+    saveSetup,
+    showHistory,
+    undoTask,
+    handleHistoryBgTap
   };
 })();
 
