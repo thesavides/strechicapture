@@ -1049,6 +1049,10 @@ const App = (() => {
     const projectId  = cfg.project_map?.[project];
     const assigneeId = cfg.assignee_map?.[assignee];
 
+    if (!projectId) {
+      toast(`⚠️ "${project}" not mapped in Setup — task will land in Todoist Inbox`);
+    }
+
     const body = { content, description: desc, due_string: dueStr, labels, priority: 1 };
     if (projectId)  body.project_id  = projectId;
     if (assigneeId) body.assignee_id = assigneeId;
@@ -1116,7 +1120,10 @@ const App = (() => {
     list.innerHTML = tasks.map(t => `
       <div class="history-item" id="hist-${esc(t.id)}">
         <div class="history-meta">
-          <div class="history-task-name">${esc(t.content)}</div>
+          <div class="history-task-name">
+            <a href="https://app.todoist.com/app/task/${esc(t.todoist_id)}" target="_blank" rel="noopener"
+               style="color:inherit;text-decoration:none;">${esc(t.content)} ↗</a>
+          </div>
           <div class="history-detail">${esc(t.project)} · ${esc(t.assigned_to)} · by ${esc(t.assigned_by)} · ${formatTime(t.created_at)}</div>
         </div>
         <button class="undo-btn" onclick="App.undoTask('${esc(t.todoist_id)}','${esc(t.id)}')" id="undo-${esc(t.id)}">Undo</button>
