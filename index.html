@@ -647,9 +647,8 @@
       <div id="project-status" style="font-size:13px;color:var(--muted);margin-bottom:8px;"></div>
 
       <div class="setup-divider"></div>
-      <div class="setup-section-label">Map Team Members</div>
-      <div class="setup-subtitle" style="margin-bottom:12px;">Match each Stretchi team member to their Todoist account.</div>
-      <div id="assignee-map-fields"></div>
+      <div class="setup-section-label">Team Members</div>
+      <div id="assignee-status" style="font-size:13px;color:var(--muted);margin-bottom:8px;"></div>
 
       <button class="btn btn-success full-btn mt16" onclick="App.saveSetup()">Save &amp; Start Capturing</button>
     </div>
@@ -1049,8 +1048,15 @@ const App = (() => {
 
     const projects = cfg.todoist_projects || [];
     const projectMatch = projects.find(p => p.name.toLowerCase() === project.toLowerCase());
-    const projectId  = projectMatch?.id;
-    const assigneeId = cfg.assignee_map?.[assignee];
+    const projectId = projectMatch?.id;
+
+    const collabs = cfg.todoist_collabs || [];
+    const assigneeLower = assignee.toLowerCase();
+    const collabMatch = collabs.find(c =>
+      (c.name || '').toLowerCase().startsWith(assigneeLower) ||
+      assigneeLower.startsWith((c.name || '').split(' ')[0].toLowerCase())
+    );
+    const assigneeId = collabMatch?.id;
 
     if (!projectId) {
       toast(`⚠️ "${project}" not found in Todoist — task will land in Inbox`);
@@ -1269,45 +1275,24 @@ const App = (() => {
     }
     statusEl.innerHTML = statusHtml;
 
-    const collOpts = Object.values(todoistCollabs).map(c =>
-      `<option value="${esc(c.id)}">${esc(c.name || c.email)}</option>`
-    ).join('');
-
-    // Assignee mappings
-    const af = document.getElementById('assignee-map-fields');
-    af.innerHTML = '';
-    STRETCHI_MEMBERS.forEach(name => {
-      const id = 'amap-' + slug(name);
-      const saved = cfg?.assignee_map?.[name] || '';
-      af.insertAdjacentHTML('beforeend', `
-        <div class="field">
-          <label class="field-label">${esc(name)}</label>
-          <select class="field-input" id="${id}">
-            <option value="">— Not assigned —</option>
-            ${collOpts}
-          </select>
-        </div>
-      `);
-      const sel = document.getElementById(id);
-      if (saved) sel.value = saved;
-    });
+    const collabs = Object.values(todoistCollabs);
+    const assigneeStatusEl = document.getElementById('assignee-status');
+    if (collabs.length) {
+      assigneeStatusEl.innerHTML = `<span style="color:var(--success)">✓ ${collabs.length} team member${collabs.length !== 1 ? 's' : ''} found: ${collabs.map(c => `<strong>${esc(c.name || c.email)}</strong>`).join(', ')}</span>`;
+    } else {
+      assigneeStatusEl.innerHTML = `<span style="color:var(--warning)">⚠ No collaborators found — add team members to your Todoist projects first.</span>`;
+    }
   }
 
   function saveSetup() {
     const userName = document.getElementById('setup-username').value.trim();
     if (!userName) { toast('Please enter your name.'); return; }
 
-    const assigneeMap = {};
-    STRETCHI_MEMBERS.forEach(name => {
-      const sel = document.getElementById('amap-' + slug(name));
-      if (sel && sel.value) assigneeMap[name] = sel.value;
-    });
-
     storeCfg({
       ...cfg,
       user_name:        userName,
       todoist_projects: todoistProjects,
-      assignee_map:     assigneeMap,
+      todoist_collabs:  Object.values(todoistCollabs),
       setup_complete:   true
     });
 
