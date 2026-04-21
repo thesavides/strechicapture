@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Capture">
+  <title>Stretchi Capture</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --card: #16213e;
+      --accent: #e94560;
+      --text: #ffffff;
+      --success: #4ecca3;
+      --warning: #ffc947;
+      --muted: rgba(255,255,255,0.45);
+      --border: rgba(255,255,255,0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      overflow: hidden;
+    }
+
+    /* ─── Screens ─── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .screen.hidden { display: none; }
+
+    /* ─── Main ─── */
+    #screen-main { gap: 28px; }
+
+    .app-title {
+      position: absolute;
+      top: max(24px, env(safe-area-inset-top, 24px));
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .gear-btn {
+      position: absolute;
+      top: max(12px, calc(env(safe-area-inset-top, 12px) - 4px));
+      right: max(12px, env(safe-area-inset-right, 12px));
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 10px;
+    }
+
+    /* ─── Mic Button ─── */
+    .mic-wrapper {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mic-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .mic-ring.pulse { animation: ring-pulse 1.4s ease-out infinite; }
+    @keyframes ring-pulse {
+      0%   { transform: scale(0.85); opacity: 0.7; }
+      100% { transform: scale(1.4);  opacity: 0;   }
+    }
+
+    .mic-btn {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 30px rgba(233,69,96,0.45);
+      transition: transform 120ms ease-out, box-shadow 120ms ease-out;
+    }
+    .mic-btn:active { transform: scale(0.93); }
+    .mic-btn.recording { animation: mic-glow 1s ease-in-out infinite; }
+    @keyframes mic-glow {
+      0%,100% { box-shadow: 0 6px 30px rgba(233,69,96,0.45); }
+      50%      { box-shadow: 0 6px 50px rgba(233,69,96,0.85), 0 0 70px rgba(233,69,96,0.25); }
+    }
+    .mic-btn svg { width: 42px; height: 42px; }
+
+    .status-text {
+      font-size: 15px;
+      color: var(--muted);
+      text-align: center;
+      min-height: 22px;
+    }
+
+    .transcript-box {
+      font-size: 15px;
+      color: var(--text);
+      text-align: center;
+      max-width: 300px;
+      line-height: 1.6;
+      min-height: 48px;
+      padding: 0 24px;
+    }
+
+    /* ─── Fallback text input ─── */
+    .fallback-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 320px;
+      padding: 0 20px;
+    }
+
+    /* ─── Confirm sheet ─── */
+    #screen-confirm {
+      justify-content: flex-end;
+      background: rgba(10,10,20,0.65);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .confirm-card {
+      background: var(--card);
+      border-radius: 24px 24px 0 0;
+      width: 100%;
+      max-height: 92dvh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px 20px max(24px, env(safe-area-inset-bottom, 24px));
+      transform: translateY(100%);
+      transition: transform 280ms cubic-bezier(0.32,0.72,0,1);
+    }
+    .confirm-card.open { transform: translateY(0); }
+    .confirm-card.warn-border { border-top: 3px solid var(--warning); }
+
+    .drag-handle {
+      width: 36px;
+      height: 4px;
+      background: rgba(255,255,255,0.18);
+      border-radius: 2px;
+      margin: 0 auto 18px;
+    }
+
+    .confirm-header {
+      margin-bottom: 16px;
+    }
+
+    .confidence-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+    .conf-high   { background: rgba(78,204,163,0.15); color: var(--success); }
+    .conf-medium { background: rgba(255,201,71,0.15);  color: var(--warning); }
+    .conf-low    { background: rgba(233,69,96,0.15);   color: var(--accent);  }
+
+    /* ─── Form fields ─── */
+    .field { margin-bottom: 13px; }
+    .field-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+    .field-input {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 15px;
+      padding: 10px 12px;
+      width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      resize: none;
+    }
+    .field-input:focus {
+      outline: none;
+      border-color: rgba(233,69,96,0.6);
+    }
+    select.field-input {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23ffffff60' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+    select.field-input option { background: var(--card); }
+
+    /* ─── Label chips ─── */
+    .label-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .chip {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 11px;
+      border-radius: 20px;
+      border: 1px solid rgba(233,69,96,0.3);
+      background: rgba(233,69,96,0.08);
+      color: rgba(233,69,96,0.7);
+      cursor: pointer;
+      transition: all 140ms;
+    }
+    .chip.on {
+      border-color: var(--accent);
+      background: rgba(233,69,96,0.22);
+      color: var(--text);
+    }
+
+    /* ─── Buttons ─── */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .btn {
+      flex: 1;
+      padding: 14px;
+      border-radius: 14px;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: transform 100ms, opacity 100ms;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn:disabled { opacity: 0.5; }
+    .btn-primary   { background: var(--accent); color: #fff; }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: var(--text); }
+    .btn-success   { background: var(--success); color: #0d2b22; }
+
+    /* ─── Success screen ─── */
+    #screen-success { gap: 18px; }
+
+    .success-ring {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      background: rgba(78,204,163,0.12);
+      border: 2px solid rgba(78,204,163,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .checkmark { width: 44px; height: 44px; }
+    .checkmark-path {
+      stroke-dasharray: 52;
+      stroke-dashoffset: 52;
+    }
+    .checkmark-path.draw { animation: draw 450ms ease-out 150ms forwards; }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+
+    .success-label {
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .success-task {
+      font-size: 14px;
+      color: var(--muted);
+      text-align: center;
+      max-width: 280px;
+      line-height: 1.5;
+    }
+
+    /* ─── Setup screen ─── */
+    #screen-setup {
+      justify-content: flex-start;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      align-items: stretch;
+    }
+
+    .setup-scroll {
+      padding: max(60px, env(safe-area-inset-top, 60px)) 20px max(40px, env(safe-area-inset-bottom, 40px));
+      max-width: 460px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .back-btn {
+      position: fixed;
+      top: max(14px, calc(env(safe-area-inset-top, 14px) - 2px));
+      left: max(12px, env(safe-area-inset-left, 12px));
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 15px;
+      cursor: pointer;
+      padding: 10px;
+      z-index: 10;
+    }
+
+    .setup-title {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .setup-subtitle {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+    .setup-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+      margin-top: 8px;
+    }
+    .setup-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 24px 0;
+    }
+
+    /* ─── Offline / Toast ─── */
+    #offline-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--warning);
+      color: #000;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      padding: max(6px, env(safe-area-inset-top, 6px)) 12px 6px;
+      display: none;
+      z-index: 999;
+    }
+    #offline-bar.show { display: block; }
+
+    #toast {
+      position: fixed;
+      bottom: max(36px, env(safe-area-inset-bottom, 36px));
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      background: #1e1535;
+      border: 1px solid rgba(233,69,96,0.4);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.4;
+      padding: 12px 18px;
+      border-radius: 14px;
+      max-width: 320px;
+      width: calc(100% - 40px);
+      text-align: center;
+      transition: transform 280ms cubic-bezier(0.32,0.72,0,1);
+      z-index: 1000;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ─── Spinner ─── */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.25);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 500ms linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Util ─── */
+    .hidden { display: none !important; }
+    .mt8 { margin-top: 8px; }
+    .mt16 { margin-top: 16px; }
+    .full-btn { width: 100%; }
+  </style>
+</head>
+<body>
+
+<!-- Offline -->
+<div id="offline-bar">No internet — API calls require a connection</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ══════════════ MAIN SCREEN ══════════════ -->
+<div id="screen-main" class="screen hidden">
+  <span class="app-title">Stretchi Capture</span>
+  <button class="gear-btn" onclick="App.showSetup()" title="Settings">⚙️</button>
+
+  <div class="mic-wrapper">
+    <div class="mic-ring" id="mic-ring"></div>
+    <button class="mic-btn" id="mic-btn" onclick="App.toggleMic()">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="9" y="2" width="6" height="12" rx="3" fill="white"/>
+        <path d="M5 11a7 7 0 0 0 14 0" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <line x1="12" y1="18" x2="12" y2="22" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        <line x1="9" y1="22" x2="15" y2="22" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="status-text" id="status-text">Tap to speak</div>
+  <div class="transcript-box" id="transcript-text"></div>
+
+  <!-- Fallback for browsers without Web Speech API -->
+  <div class="fallback-wrap hidden" id="fallback-wrap">
+    <textarea class="field-input" id="fallback-input" rows="3" placeholder="Type your task instruction here…"></textarea>
+    <button class="btn btn-primary" onclick="App.submitFallback()">Parse Task →</button>
+  </div>
+</div>
+
+<!-- ══════════════ CONFIRM SCREEN ══════════════ -->
+<div id="screen-confirm" class="screen hidden" onclick="App.handleConfirmBgTap(event)">
+  <div class="confirm-card" id="confirm-card">
+    <div class="drag-handle"></div>
+
+    <div class="confirm-header">
+      <div class="confidence-badge" id="conf-badge"></div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Task</label>
+      <input class="field-input" id="field-content" type="text">
+    </div>
+
+    <div class="field">
+      <label class="field-label">Description</label>
+      <textarea class="field-input" id="field-desc" rows="2"></textarea>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Assignee</label>
+      <select class="field-input" id="field-assignee">
+        <option>Luan</option>
+        <option>Martin</option>
+        <option>Janine</option>
+        <option>Factory lead</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Project</label>
+      <select class="field-input" id="field-project">
+        <option>Factory Operations</option>
+        <option>Sales and Quoting</option>
+        <option>Finance and Admin</option>
+        <option>Purchasing and Inventory</option>
+        <option>Luan Direct</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Due Date</label>
+      <input class="field-input" id="field-due" type="text" placeholder="tomorrow, next Friday, 2026-05-01">
+    </div>
+
+    <div class="field">
+      <label class="field-label">Labels</label>
+      <div class="label-chips" id="label-chips"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="App.cancelConfirm()">Cancel</button>
+      <button class="btn btn-primary" id="create-btn" onclick="App.createTask()">Create Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SUCCESS SCREEN ══════════════ -->
+<div id="screen-success" class="screen hidden">
+  <div class="success-ring">
+    <svg class="checkmark" viewBox="0 0 44 44" fill="none">
+      <path class="checkmark-path" d="M11 22 L19 30 L33 15"
+        stroke="#4ecca3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div class="success-label">Task created</div>
+  <div class="success-task" id="success-task-name"></div>
+</div>
+
+<!-- ══════════════ SETUP SCREEN ══════════════ -->
+<div id="screen-setup" class="screen hidden">
+  <button class="back-btn hidden" id="back-btn" onclick="App.backFromSetup()">← Back</button>
+
+  <div class="setup-scroll">
+    <div class="setup-title">Setup</div>
+    <div class="setup-subtitle">Enter your API keys. They are stored only on this device and sent only to the respective APIs.</div>
+
+    <div class="setup-section-label">API Keys</div>
+
+    <div class="field">
+      <label class="field-label">Claude API Key</label>
+      <input class="field-input" id="setup-claude" type="password" placeholder="sk-ant-…" autocomplete="off">
+    </div>
+    <div class="field">
+      <label class="field-label">Todoist API Token</label>
+      <input class="field-input" id="setup-todoist" type="password" placeholder="Paste your token" autocomplete="off">
+    </div>
+
+    <button class="btn btn-primary full-btn mt16" id="load-btn" onclick="App.fetchProjectsAndCollabs()">
+      Load Projects &amp; Team
+    </button>
+
+    <!-- Shown after successful API fetch -->
+    <div id="setup-mapping" class="hidden">
+      <div class="setup-divider"></div>
+      <div class="setup-section-label">Map Projects</div>
+      <div id="project-map-fields"></div>
+
+      <div class="setup-divider"></div>
+      <div class="setup-section-label">Map Team Members</div>
+      <div id="assignee-map-fields"></div>
+
+      <button class="btn btn-success full-btn mt16" onclick="App.saveSetup()">Save &amp; Start Capturing</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────
+const STORAGE_KEY  = 'stretchi_config';
+const DRAFTS_KEY   = 'stretchi_drafts';
+
+const STRETCHI_PROJECTS = [
+  'Factory Operations',
+  'Sales and Quoting',
+  'Finance and Admin',
+  'Purchasing and Inventory',
+  'Luan Direct'
+];
+
+const STRETCHI_MEMBERS = ['Luan', 'Martin', 'Janine', 'Factory lead'];
+
+const ALL_LABELS = [
+  '@urgent','@customer-waiting','@supplier','@luan-review',
+  '@factory-floor','@quote','@rental','@eu'
+];
+
+const SYSTEM_PROMPT =
+`You are a task parser for Stretchi Tents, a stretch tent manufacturer in South Africa. Parse the spoken input into a structured task.
+
+TEAM MEMBERS (use exact spelling):
+- Luan: founder/CEO
+- Martin: operations/production/KERN
+- Janine: finance/admin
+- Factory lead: production floor tasks
+
+PROJECTS (use exact name):
+- Factory Operations: production, quality, machines, floor tasks
+- Sales and Quoting: quotes, pricing, customer follow-ups, leads
+- Finance and Admin: invoicing, payments, Xero, VAT, suppliers
+- Purchasing and Inventory: stock, orders, Unleashed, BOMs
+- Luan Direct: Luan's own actions, meetings, decisions he owes
+
+LABELS (use one or more, exact spelling):
+@urgent, @customer-waiting, @supplier, @luan-review, @factory-floor, @quote, @rental, @eu
+
+RULES:
+- If no assignee is obvious, default to "Luan"
+- If no due date is stated, default to "tomorrow"
+- If no project is obvious, default to "Luan Direct"
+- Always include at least one label
+- Keep content concise but complete
+- Include any customer names, reference numbers, or specifics mentioned
+
+Return ONLY valid JSON, no other text:
+{"content":"short task title","description":"additional detail from the voice note","assignee":"person name","project":"exact project name from list above","due_date":"natural language date e.g. tomorrow, next Wednesday, 2026-04-25","labels":["@label1","@label2"],"confidence":"high/medium/low"}
+
+If confidence is low, set the first label to @luan-review so Luan manually checks it.`;
+
+// ─────────────────────────────────────────────────────────────
+// App
+// ─────────────────────────────────────────────────────────────
+const App = (() => {
+  let cfg = null;
+  let recognition = null;
+  let isRecording = false;
+  let currentTask = null;
+  let todoistProjects = [];
+  let todoistCollabs = {};   // id → {id, name, email}
+  let toastTimer = null;
+
+  // ── Boot ──────────────────────────────────────────────────
+  function init() {
+    cfg = loadCfg();
+    setupPWA();
+    watchOnline();
+
+    if (cfg && cfg.setup_complete) {
+      showScreen('main');
+    } else {
+      showScreen('setup');
+    }
+
+    initSpeech();
+  }
+
+  function loadCfg() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; }
+  }
+
+  function storeCfg(obj) {
+    cfg = obj;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+  }
+
+  // ── PWA ───────────────────────────────────────────────────
+  function setupPWA() {
+    // Inject manifest as blob
+    try {
+      const manifest = {
+        name: 'Stretchi Capture',
+        short_name: 'Capture',
+        start_url: './',
+        display: 'standalone',
+        background_color: '#1a1a2e',
+        theme_color: '#1a1a2e',
+        icons: [{
+          src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231a1a2e'/%3E%3Ccircle cx='96' cy='96' r='48' fill='%23e94560'/%3E%3Crect x='83' y='60' width='26' height='52' rx='13' fill='white'/%3E%3Cpath d='M68 96a28 28 0 0 0 56 0' stroke='white' stroke-width='7' fill='none' stroke-linecap='round'/%3E%3Cline x1='96' y1='124' x2='96' y2='140' stroke='white' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E",
+          sizes: '192x192',
+          type: 'image/svg+xml'
+        }]
+      };
+      const blob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = URL.createObjectURL(blob);
+      document.head.appendChild(link);
+    } catch {}
+
+    // Service worker (minimal shell cache)
+    if ('serviceWorker' in navigator) {
+      try {
+        const sw = `
+          const CACHE = 'stretchi-v1';
+          self.addEventListener('install', e => {
+            self.skipWaiting();
+          });
+          self.addEventListener('fetch', e => {
+            if (e.request.mode === 'navigate') {
+              e.respondWith(
+                fetch(e.request).catch(() => caches.match(e.request))
+              );
+            }
+          });
+        `;
+        const swBlob = new Blob([sw], {type: 'application/javascript'});
+        navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+      } catch {}
+    }
+  }
+
+  // ── Online / Offline ──────────────────────────────────────
+  function watchOnline() {
+    const bar = document.getElementById('offline-bar');
+    const update = () => {
+      bar.classList.toggle('show', !navigator.onLine);
+      const btn = document.getElementById('mic-btn');
+      if (btn) btn.disabled = !navigator.onLine;
+    };
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    update();
+  }
+
+  // ── Screen routing ────────────────────────────────────────
+  function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    const el = document.getElementById('screen-' + name);
+    if (el) el.classList.remove('hidden');
+
+    if (name === 'confirm') {
+      // Animate card up on next frame
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          document.getElementById('confirm-card').classList.add('open');
+        });
+      });
+    }
+  }
+
+  // ── Speech recognition ────────────────────────────────────
+  function initSpeech() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      // Show text fallback
+      document.getElementById('fallback-wrap').classList.remove('hidden');
+      document.getElementById('mic-btn').classList.add('hidden');
+      setStatus('No speech support — type below');
+      return;
+    }
+
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-ZA'; // South African English
+
+    recognition.onstart = () => {
+      isRecording = true;
+      setStatus('Listening…');
+      document.getElementById('mic-btn').classList.add('recording');
+      document.getElementById('mic-ring').classList.add('pulse');
+      document.getElementById('transcript-text').textContent = '';
+    };
+
+    recognition.onresult = (e) => {
+      const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+      document.getElementById('transcript-text').textContent = transcript;
+      if (e.results[e.results.length - 1].isFinal) {
+        stopMic();
+        parseThroughClaude(transcript);
+      }
+    };
+
+    recognition.onerror = (e) => {
+      stopMic();
+      if (e.error === 'not-allowed') {
+        toast('Microphone blocked. Enable it in Settings → Safari → Microphone.');
+      } else if (e.error !== 'no-speech') {
+        toast('Speech error: ' + e.error + '. Try again.');
+      }
+      setStatus('Tap to speak');
+    };
+
+    recognition.onend = () => { if (isRecording) stopMic(); };
+  }
+
+  function toggleMic() {
+    if (!cfg || !cfg.setup_complete) {
+      toast('Complete setup first.');
+      showSetup();
+      return;
+    }
+    if (!navigator.onLine) { toast('Internet required for task parsing.'); return; }
+
+    if (isRecording) {
+      recognition.stop();
+    } else {
+      try { recognition.start(); }
+      catch { toast('Could not start microphone. Try again.'); }
+    }
+  }
+
+  function stopMic() {
+    isRecording = false;
+    document.getElementById('mic-btn').classList.remove('recording');
+    document.getElementById('mic-ring').classList.remove('pulse');
+  }
+
+  function submitFallback() {
+    const text = document.getElementById('fallback-input').value.trim();
+    if (!text) return;
+    if (!cfg || !cfg.setup_complete) { toast('Complete setup first.'); return; }
+    parseThroughClaude(text);
+  }
+
+  // ── Claude API ────────────────────────────────────────────
+  async function parseThroughClaude(transcript) {
+    setStatus('Processing…');
+    document.getElementById('transcript-text').textContent = transcript;
+
+    if (!cfg.claude_api_key) {
+      toast('No Claude API key. Update in Setup.');
+      setStatus('Tap to speak');
+      return;
+    }
+
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': cfg.claude_api_key,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 400,
+          messages: [{ role: 'user', content: SYSTEM_PROMPT + '\n\nUser said: ' + transcript }]
+        })
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'Claude API error ' + resp.status);
+      }
+
+      const data = await resp.json();
+      const rawText = data.content[0].text.trim();
+
+      let task;
+      try {
+        // Strip any markdown code fences if present
+        const jsonStr = rawText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+        task = JSON.parse(jsonStr);
+      } catch {
+        toast('Could not parse Claude response — edit fields manually.');
+        task = {
+          content: transcript,
+          description: '',
+          assignee: 'Luan',
+          project: 'Luan Direct',
+          due_date: 'tomorrow',
+          labels: ['@luan-review'],
+          confidence: 'low'
+        };
+      }
+
+      setStatus('Tap to speak');
+      showConfirmation(task);
+
+    } catch (e) {
+      setStatus('Tap to speak');
+      toast('Claude error: ' + e.message);
+    }
+  }
+
+  // ── Confirmation ──────────────────────────────────────────
+  function showConfirmation(task) {
+    currentTask = task;
+
+    document.getElementById('field-content').value = task.content || '';
+    document.getElementById('field-desc').value    = task.description || '';
+    document.getElementById('field-due').value     = task.due_date || 'tomorrow';
+
+    setSelectValue('field-assignee', task.assignee);
+    setSelectValue('field-project',  task.project);
+
+    const conf  = (task.confidence || 'medium').toLowerCase();
+    const badge = document.getElementById('conf-badge');
+    badge.textContent = conf + ' confidence';
+    badge.className   = 'confidence-badge conf-' + conf;
+
+    const card = document.getElementById('confirm-card');
+    card.classList.toggle('warn-border', conf === 'low');
+
+    renderChips(task.labels || []);
+
+    const createBtn = document.getElementById('create-btn');
+    createBtn.disabled = false;
+    createBtn.textContent = 'Create Task';
+
+    showScreen('confirm');
+  }
+
+  function setSelectValue(id, val) {
+    if (!val) return;
+    const sel = document.getElementById(id);
+    const v = val.toLowerCase();
+    for (const opt of sel.options) {
+      if (opt.value.toLowerCase() === v) { opt.selected = true; return; }
+    }
+  }
+
+  function renderChips(active) {
+    const container = document.getElementById('label-chips');
+    container.innerHTML = '';
+    const activeLower = active.map(l => l.toLowerCase());
+    ALL_LABELS.forEach(label => {
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (activeLower.includes(label.toLowerCase()) ? ' on' : '');
+      chip.textContent = label;
+      chip.onclick = () => chip.classList.toggle('on');
+      container.appendChild(chip);
+    });
+  }
+
+  function getActiveLabels() {
+    return Array.from(document.querySelectorAll('.label-chips .chip.on'))
+      .map(c => c.textContent.replace('@', ''));
+  }
+
+  function cancelConfirm() {
+    document.getElementById('confirm-card').classList.remove('open');
+    setTimeout(() => showScreen('main'), 220);
+  }
+
+  function handleConfirmBgTap(e) {
+    if (e.target.id === 'screen-confirm') cancelConfirm();
+  }
+
+  // ── Create Todoist Task ───────────────────────────────────
+  async function createTask() {
+    const btn = document.getElementById('create-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Creating…';
+
+    const content    = document.getElementById('field-content').value.trim();
+    const desc       = document.getElementById('field-desc').value.trim();
+    const assignee   = document.getElementById('field-assignee').value;
+    const project    = document.getElementById('field-project').value;
+    const dueStr     = document.getElementById('field-due').value.trim();
+    const labels     = getActiveLabels();
+
+    const projectId  = cfg.project_map?.[project];
+    const assigneeId = cfg.assignee_map?.[assignee];
+
+    const body = {
+      content,
+      description: desc,
+      due_string: dueStr || 'tomorrow',
+      labels,
+      priority: 1
+    };
+    if (projectId)  body.project_id  = projectId;
+    if (assigneeId) body.assignee_id = parseInt(assigneeId, 10);
+
+    try {
+      const resp = await fetch('https://api.todoist.com/rest/v2/tasks', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + cfg.todoist_token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Todoist error ' + resp.status);
+      }
+
+      if (navigator.vibrate) navigator.vibrate([40, 20, 40]);
+      showSuccessScreen(content);
+
+    } catch (e) {
+      saveDraft({ content, desc, assignee, project, dueStr, labels });
+      toast('Saved as draft. ' + e.message);
+      btn.disabled = false;
+      btn.textContent = 'Create Task';
+    }
+  }
+
+  function saveDraft(task) {
+    try {
+      const drafts = JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]');
+      drafts.push({ ...task, savedAt: new Date().toISOString() });
+      localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
+    } catch {}
+  }
+
+  function showSuccessScreen(taskName) {
+    document.getElementById('confirm-card').classList.remove('open');
+    setTimeout(() => {
+      document.getElementById('success-task-name').textContent = taskName;
+      showScreen('success');
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          document.querySelector('.checkmark-path').classList.add('draw');
+        });
+      });
+
+      setTimeout(() => {
+        document.querySelector('.checkmark-path').classList.remove('draw');
+        document.getElementById('transcript-text').textContent = '';
+        document.getElementById('fallback-input') && (document.getElementById('fallback-input').value = '');
+        showScreen('main');
+      }, 2300);
+    }, 200);
+  }
+
+  // ── Setup ─────────────────────────────────────────────────
+  function showSetup() {
+    showScreen('setup');
+    document.getElementById('back-btn').classList.toggle('hidden', !(cfg && cfg.setup_complete));
+
+    if (cfg) {
+      document.getElementById('setup-claude').value   = cfg.claude_api_key || '';
+      document.getElementById('setup-todoist').value  = cfg.todoist_token  || '';
+    }
+  }
+
+  function backFromSetup() {
+    if (cfg && cfg.setup_complete) showScreen('main');
+  }
+
+  async function fetchProjectsAndCollabs() {
+    const claudeKey    = document.getElementById('setup-claude').value.trim();
+    const todoistToken = document.getElementById('setup-todoist').value.trim();
+
+    if (!todoistToken) { toast('Todoist API token is required.'); return; }
+
+    const btn = document.getElementById('load-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Loading…';
+
+    try {
+      const projResp = await fetch('https://api.todoist.com/rest/v2/projects', {
+        headers: { 'Authorization': 'Bearer ' + todoistToken }
+      });
+      if (!projResp.ok) throw new Error('Invalid Todoist token (status ' + projResp.status + ').');
+      todoistProjects = await projResp.json();
+
+      // Collect unique collaborators across all projects
+      todoistCollabs = {};
+      await Promise.all(todoistProjects.map(async (proj) => {
+        try {
+          const cr = await fetch(`https://api.todoist.com/rest/v2/projects/${proj.id}/collaborators`, {
+            headers: { 'Authorization': 'Bearer ' + todoistToken }
+          });
+          if (cr.ok) {
+            const list = await cr.json();
+            list.forEach(c => { todoistCollabs[c.id] = c; });
+          }
+        } catch {}
+      }));
+
+      renderMappingFields();
+      document.getElementById('setup-mapping').classList.remove('hidden');
+
+    } catch (e) {
+      toast('Error: ' + e.message);
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Load Projects & Team';
+  }
+
+  function renderMappingFields() {
+    const projOpts = todoistProjects.map(p =>
+      `<option value="${esc(p.id)}">${esc(p.name)}</option>`
+    ).join('');
+
+    const collOpts = Object.values(todoistCollabs).map(c =>
+      `<option value="${esc(c.id)}">${esc(c.name || c.email)}</option>`
+    ).join('');
+
+    // Project mappings
+    const pf = document.getElementById('project-map-fields');
+    pf.innerHTML = '';
+    STRETCHI_PROJECTS.forEach(name => {
+      const id = 'pmap-' + slug(name);
+      const saved = cfg?.project_map?.[name] || '';
+      pf.insertAdjacentHTML('beforeend', `
+        <div class="field">
+          <label class="field-label">${esc(name)}</label>
+          <select class="field-input" id="${id}">
+            <option value="">— Select Todoist project —</option>
+            ${projOpts}
+          </select>
+        </div>
+      `);
+      const sel = document.getElementById(id);
+      if (saved) {
+        sel.value = saved;
+      } else {
+        // Auto-match by first word
+        const kw = name.split(' ')[0].toLowerCase();
+        const match = todoistProjects.find(p => p.name.toLowerCase().includes(kw));
+        if (match) sel.value = match.id;
+      }
+    });
+
+    // Assignee mappings
+    const af = document.getElementById('assignee-map-fields');
+    af.innerHTML = '';
+    STRETCHI_MEMBERS.forEach(name => {
+      const id = 'amap-' + slug(name);
+      const saved = cfg?.assignee_map?.[name] || '';
+      af.insertAdjacentHTML('beforeend', `
+        <div class="field">
+          <label class="field-label">${esc(name)}</label>
+          <select class="field-input" id="${id}">
+            <option value="">— Not assigned —</option>
+            ${collOpts}
+          </select>
+        </div>
+      `);
+      const sel = document.getElementById(id);
+      if (saved) sel.value = saved;
+    });
+  }
+
+  function saveSetup() {
+    const claudeKey    = document.getElementById('setup-claude').value.trim();
+    const todoistToken = document.getElementById('setup-todoist').value.trim();
+
+    if (!todoistToken) { toast('Todoist token is required.'); return; }
+
+    const projectMap = {};
+    STRETCHI_PROJECTS.forEach(name => {
+      const sel = document.getElementById('pmap-' + slug(name));
+      if (sel && sel.value) projectMap[name] = sel.value;
+    });
+
+    const assigneeMap = {};
+    STRETCHI_MEMBERS.forEach(name => {
+      const sel = document.getElementById('amap-' + slug(name));
+      if (sel && sel.value) assigneeMap[name] = sel.value;
+    });
+
+    storeCfg({
+      claude_api_key: claudeKey,
+      todoist_token:  todoistToken,
+      project_map:    projectMap,
+      assignee_map:   assigneeMap,
+      setup_complete: true
+    });
+
+    initSpeech();
+    showScreen('main');
+    toast('Setup saved — ready to capture!');
+  }
+
+  // ── Utilities ─────────────────────────────────────────────
+  function setStatus(text) {
+    const el = document.getElementById('status-text');
+    if (el) el.textContent = text;
+  }
+
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3800);
+  }
+
+  function esc(str) {
+    return String(str ?? '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function slug(str) {
+    return str.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g,'');
+  }
+
+  return {
+    init,
+    toggleMic,
+    submitFallback,
+    cancelConfirm,
+    handleConfirmBgTap,
+    createTask,
+    showSetup,
+    backFromSetup,
+    fetchProjectsAndCollabs,
+    saveSetup
+  };
+})();
+
+document.addEventListener('DOMContentLoaded', App.init);
+</script>
+</body>
+</html>
