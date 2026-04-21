@@ -920,10 +920,7 @@ const App = (() => {
     try {
       const resp = await fetch('/todoist/tasks', {
         method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + cfg.todoist_token,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
 
@@ -990,9 +987,7 @@ const App = (() => {
     btn.innerHTML = '<span class="spinner"></span>Loading…';
 
     try {
-      const projResp = await fetch('/todoist/projects', {
-        headers: { 'Authorization': 'Bearer ' + todoistToken }
-      });
+      const projResp = await fetch('/todoist/projects');
       if (!projResp.ok) {
         const errBody = await projResp.text().catch(() => '');
         throw new Error('Todoist ' + projResp.status + ': ' + (errBody || 'no response body'));
@@ -1003,9 +998,7 @@ const App = (() => {
       todoistCollabs = {};
       await Promise.all(todoistProjects.map(async (proj) => {
         try {
-          const cr = await fetch(`/todoist/projects/${proj.id}/collaborators`, {
-            headers: { 'Authorization': 'Bearer ' + todoistToken }
-          });
+          const cr = await fetch(`/todoist/projects/${proj.id}/collaborators`);
           if (cr.ok) {
             const list = await cr.json();
             list.forEach(c => { todoistCollabs[c.id] = c; });
