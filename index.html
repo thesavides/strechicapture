@@ -694,9 +694,10 @@ RULES:
 - Always include at least one label
 - Keep content concise but complete
 - Include any customer names, reference numbers, or specifics mentioned
+- description field: only verbatim facts from the voice note (names, numbers, context). Never include your reasoning, interpretation, or paraphrasing of what the task means.
 
 Return ONLY valid JSON, no other text:
-{"content":"short task title","description":"additional detail from the voice note","assignee":"person name","project":"exact project name from list above","due_date":"natural language date e.g. tomorrow, next Wednesday, 2026-04-25","labels":["@label1","@label2"],"confidence":"high/medium/low"}
+{"content":"short task title","description":"verbatim details only e.g. customer name, reference number, specific context mentioned","assignee":"person name","project":"exact project name from list above","due_date":"natural language date e.g. tomorrow, next Wednesday, 2026-04-25","labels":["@label1","@label2"],"confidence":"high/medium/low"}
 
 If confidence is low, set the first label to @luan-review so Luan manually checks it.`;
 
