@@ -704,7 +704,7 @@ RULES:
 - If no project is obvious, default to "Luan Direct"
 - Always include at least one label
 - Keep content concise but complete (action verb + object)
-- description field: copy ONLY the specific facts spoken — names, numbers, references, dates. Do NOT summarise, interpret, or explain why the task exists. If nothing specific was said beyond the task itself, leave description empty.
+- description field: brief context about why the task exists. Always attribute to the correct person — the speaker is ${speakerName}, so use their name, not someone else's.
 
 Return ONLY valid JSON, no other text:
 {"content":"action verb + object e.g. Send quotation to Mr Smith","description":"only verbatim specifics e.g. customer name, ref number — leave blank if nothing specific was said","assignee":"person name","project":"exact project name from list above","due_date":"natural language date e.g. tomorrow, next Wednesday, 2026-04-25","labels":["@label1","@label2"],"confidence":"high/medium/low"}
