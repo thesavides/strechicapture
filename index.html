@@ -992,7 +992,8 @@ const App = (() => {
         const errBody = await projResp.text().catch(() => '');
         throw new Error('Todoist ' + projResp.status + ': ' + (errBody || 'no response body'));
       }
-      todoistProjects = await projResp.json();
+      const projData = await projResp.json();
+      todoistProjects = projData.results || projData;
 
       // Collect unique collaborators across all projects
       todoistCollabs = {};
@@ -1000,7 +1001,8 @@ const App = (() => {
         try {
           const cr = await fetch(`/todoist/projects/${proj.id}/collaborators`);
           if (cr.ok) {
-            const list = await cr.json();
+            const collData = await cr.json();
+            const list = collData.results || collData;
             list.forEach(c => { todoistCollabs[c.id] = c; });
           }
         } catch {}
