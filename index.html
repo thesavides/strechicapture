@@ -676,8 +676,10 @@ const ALL_LABELS = [
   '@factory-floor','@quote','@rental','@eu'
 ];
 
-const SYSTEM_PROMPT =
-`You are a task parser for Stretchi Tents, a stretch tent manufacturer in South Africa. Parse the spoken input into a structured task.
+function buildSystemPrompt(speakerName) {
+  return `You are a task parser for Stretchi Tents, a stretch tent manufacturer in South Africa. Parse the spoken input into a structured task.
+
+THE PERSON SPEAKING IS: ${speakerName}
 
 TEAM MEMBERS (use exact spelling):
 - Luan: founder/CEO
@@ -696,18 +698,19 @@ LABELS (use one or more, exact spelling):
 @urgent, @customer-waiting, @supplier, @luan-review, @factory-floor, @quote, @rental, @eu
 
 RULES:
+- The person speaking is ${speakerName} — they are creating this task, not being assigned it
 - If no assignee is obvious, default to "Luan"
 - If no due date is stated, default to "tomorrow"
 - If no project is obvious, default to "Luan Direct"
 - Always include at least one label
-- Keep content concise but complete
-- Include any customer names, reference numbers, or specifics mentioned
-- description field: only verbatim facts from the voice note (names, numbers, context). Never include your reasoning, interpretation, or paraphrasing of what the task means.
+- Keep content concise but complete (action verb + object)
+- description field: copy ONLY the specific facts spoken — names, numbers, references, dates. Do NOT summarise, interpret, or explain why the task exists. If nothing specific was said beyond the task itself, leave description empty.
 
 Return ONLY valid JSON, no other text:
-{"content":"short task title","description":"verbatim details only e.g. customer name, reference number, specific context mentioned","assignee":"person name","project":"exact project name from list above","due_date":"natural language date e.g. tomorrow, next Wednesday, 2026-04-25","labels":["@label1","@label2"],"confidence":"high/medium/low"}
+{"content":"action verb + object e.g. Send quotation to Mr Smith","description":"only verbatim specifics e.g. customer name, ref number — leave blank if nothing specific was said","assignee":"person name","project":"exact project name from list above","due_date":"natural language date e.g. tomorrow, next Wednesday, 2026-04-25","labels":["@label1","@label2"],"confidence":"high/medium/low"}
 
 If confidence is low, set the first label to @luan-review so Luan manually checks it.`;
+}
 
 // ─────────────────────────────────────────────────────────────
 // App
@@ -933,7 +936,7 @@ const App = (() => {
         body: JSON.stringify({
           model: 'claude-sonnet-4-5',
           max_tokens: 400,
-          messages: [{ role: 'user', content: SYSTEM_PROMPT + '\n\nUser said: ' + transcript }]
+          messages: [{ role: 'user', content: buildSystemPrompt(cfg.user_name || 'Unknown') + '\n\nUser said: ' + transcript }]
         })
       });
 
