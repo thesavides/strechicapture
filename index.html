@@ -615,6 +615,10 @@
   <div class="history-card" id="history-card">
     <div class="drag-handle"></div>
     <div class="history-title">Recent Tasks</div>
+    <div style="display:flex;justify-content:center;gap:8px;margin-bottom:14px;">
+      <button class="chip on" id="hist-all" onclick="App.setHistoryFilter(false)">All tasks</button>
+      <button class="chip" id="hist-mine" onclick="App.setHistoryFilter(true)">Mine only</button>
+    </div>
     <div id="history-list"></div>
   </div>
 </div>
@@ -626,6 +630,11 @@
   <div class="setup-scroll">
     <div class="setup-title">Setup</div>
     <div class="setup-subtitle">Map your Stretchi projects and team to Todoist. This only needs to be done once.</div>
+
+    <div class="field">
+      <label class="field-label">Your Name</label>
+      <input class="field-input" id="setup-username" type="text" placeholder="e.g. Luan" autocomplete="off">
+    </div>
 
     <button class="btn btn-primary full-btn mt16" id="load-btn" onclick="App.fetchProjectsAndCollabs()">
       Load Projects &amp; Team
@@ -650,8 +659,7 @@
 // ─────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────
-const STORAGE_KEY  = 'stretchi_config';
-const DRAFTS_KEY   = 'stretchi_drafts';
+const STORAGE_KEY = 'stretchi_config';
 
 const STRETCHI_PROJECTS = [
   'Factory Operations',
@@ -712,6 +720,7 @@ const App = (() => {
   let todoistProjects = [];
   let todoistCollabs = {};   // id → {id, name, email}
   let toastTimer = null;
+  let historyFilterMine = false;
 
   // ── Boot ──────────────────────────────────────────────────
   async function init() {
@@ -768,6 +777,46 @@ const App = (() => {
     window.addEventListener('online', update);
     window.addEventListener('offline', update);
     update();
+  }
+
+  // ── Supabase ───────────────────────────────────────────────
+  function sbHeaders() {
+    return {
+      'apikey': cfg.supabase_anon_key,
+      'Authorization': 'Bearer ' + cfg.supabase_anon_key,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    };
+  }
+
+  async function sbInsertTask(record) {
+    if (!cfg.supabase_url || !cfg.supabase_anon_key) return null;
+    const resp = await fetch(`${cfg.supabase_url}/rest/v1/tasks`, {
+      method: 'POST',
+      headers: sbHeaders(),
+      body: JSON.stringify(record)
+    });
+    if (!resp.ok) throw new Error('Supabase insert ' + resp.status);
+    const data = await resp.json();
+    return Array.isArray(data) ? data[0] : data;
+  }
+
+  async function sbFetchTasks(filterUser) {
+    if (!cfg.supabase_url || !cfg.supabase_anon_key) return [];
+    let url = `${cfg.supabase_url}/rest/v1/tasks?deleted=eq.false&order=created_at.desc&limit=50`;
+    if (filterUser) url += `&assigned_by=eq.${encodeURIComponent(filterUser)}`;
+    const resp = await fetch(url, { headers: sbHeaders() });
+    if (!resp.ok) return [];
+    return await resp.json();
+  }
+
+  async function sbSoftDelete(id) {
+    if (!cfg.supabase_url || !cfg.supabase_anon_key) return;
+    await fetch(`${cfg.supabase_url}/rest/v1/tasks?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: sbHeaders(),
+      body: JSON.stringify({ deleted: true })
+    });
   }
 
   // ── Screen routing ────────────────────────────────────────
@@ -1019,8 +1068,20 @@ const App = (() => {
       const created = await resp.json();
       if (navigator.vibrate) navigator.vibrate([40, 20, 40]);
 
-      // Save to local history
-      addToHistory({ id: created.id, content, project, assignee, dueStr, createdAt: new Date().toISOString() });
+      // Save to Supabase
+      try {
+        await sbInsertTask({
+          todoist_id:  created.id,
+          content,
+          description: desc,
+          project,
+          assigned_to: assignee,
+          assigned_by: cfg.user_name || 'Unknown',
+          due_date:    dueStr,
+          labels
+        });
+      } catch {}
+
       showSuccessScreen(content);
 
     } catch (e) {
@@ -1030,55 +1091,57 @@ const App = (() => {
   }
 
   // ── Task History ──────────────────────────────────────────
-  function addToHistory(entry) {
-    try {
-      const history = JSON.parse(localStorage.getItem('stretchi_history') || '[]');
-      history.unshift(entry);
-      localStorage.setItem('stretchi_history', JSON.stringify(history.slice(0, 20)));
-    } catch {}
-  }
-
-  function showHistory() {
-    const history = JSON.parse(localStorage.getItem('stretchi_history') || '[]');
-    const list = document.getElementById('history-list');
-
-    if (history.length === 0) {
-      list.innerHTML = '<div class="history-empty">No tasks yet. Capture your first one!</div>';
-    } else {
-      list.innerHTML = history.map((t, i) => `
-        <div class="history-item" id="hist-${i}">
-          <div class="history-meta">
-            <div class="history-task-name">${esc(t.content)}</div>
-            <div class="history-detail">${esc(t.project)} · ${esc(t.assignee)} · ${formatTime(t.createdAt)}</div>
-          </div>
-          <button class="undo-btn" onclick="App.undoTask('${esc(t.id)}', ${i})" id="undo-${i}">Undo</button>
-        </div>
-      `).join('');
-    }
-
+  async function showHistory() {
     showScreen('history');
     requestAnimationFrame(() => requestAnimationFrame(() => {
       document.getElementById('history-card').classList.add('open');
     }));
+    await renderHistoryList();
   }
 
-  async function undoTask(taskId, index) {
-    const btn = document.getElementById('undo-' + index);
+  async function renderHistoryList() {
+    const list = document.getElementById('history-list');
+    list.innerHTML = '<div class="history-empty"><span class="spinner"></span> Loading…</div>';
+
+    const tasks = await sbFetchTasks(historyFilterMine ? cfg.user_name : null);
+
+    if (tasks.length === 0) {
+      list.innerHTML = '<div class="history-empty">No tasks yet. Capture your first one!</div>';
+      return;
+    }
+
+    list.innerHTML = tasks.map(t => `
+      <div class="history-item" id="hist-${esc(t.id)}">
+        <div class="history-meta">
+          <div class="history-task-name">${esc(t.content)}</div>
+          <div class="history-detail">${esc(t.project)} · ${esc(t.assigned_to)} · by ${esc(t.assigned_by)} · ${formatTime(t.created_at)}</div>
+        </div>
+        <button class="undo-btn" onclick="App.undoTask('${esc(t.todoist_id)}','${esc(t.id)}')" id="undo-${esc(t.id)}">Undo</button>
+      </div>
+    `).join('');
+  }
+
+  function setHistoryFilter(mine) {
+    historyFilterMine = mine;
+    document.getElementById('hist-all').classList.toggle('on', !mine);
+    document.getElementById('hist-mine').classList.toggle('on', mine);
+    renderHistoryList();
+  }
+
+  async function undoTask(todoistId, supabaseId) {
+    const btn = document.getElementById('undo-' + supabaseId);
     if (!btn || btn.disabled) return;
     btn.disabled = true;
     btn.textContent = '…';
 
     try {
-      const resp = await fetch('/todoist/tasks/' + taskId, { method: 'DELETE' });
+      const resp = await fetch('/todoist/tasks/' + todoistId, { method: 'DELETE' });
       if (!resp.ok && resp.status !== 204) throw new Error('status ' + resp.status);
+
+      await sbSoftDelete(supabaseId);
 
       btn.textContent = 'Deleted';
       btn.classList.add('done');
-
-      // Remove from local history
-      const history = JSON.parse(localStorage.getItem('stretchi_history') || '[]');
-      history.splice(index, 1);
-      localStorage.setItem('stretchi_history', JSON.stringify(history));
 
     } catch (e) {
       btn.disabled = false;
@@ -1099,14 +1162,6 @@ const App = (() => {
     const d = new Date(iso);
     return d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }) + ' ' +
            d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
-  }
-
-  function saveDraft(task) {
-    try {
-      const drafts = JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]');
-      drafts.push({ ...task, savedAt: new Date().toISOString() });
-      localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
-    } catch {}
   }
 
   function showSuccessScreen(taskName) {
@@ -1133,7 +1188,9 @@ const App = (() => {
   function showSetup() {
     showScreen('setup');
     document.getElementById('back-btn').classList.toggle('hidden', !(cfg && cfg.setup_complete));
-
+    if (cfg && cfg.user_name) {
+      document.getElementById('setup-username').value = cfg.user_name;
+    }
   }
 
   function backFromSetup() {
@@ -1236,6 +1293,9 @@ const App = (() => {
   }
 
   function saveSetup() {
+    const userName = document.getElementById('setup-username').value.trim();
+    if (!userName) { toast('Please enter your name.'); return; }
+
     const projectMap = {};
     STRETCHI_PROJECTS.forEach(name => {
       const sel = document.getElementById('pmap-' + slug(name));
@@ -1250,6 +1310,7 @@ const App = (() => {
 
     storeCfg({
       ...cfg,
+      user_name:      userName,
       project_map:    projectMap,
       assignee_map:   assigneeMap,
       setup_complete: true
@@ -1295,6 +1356,7 @@ const App = (() => {
     fetchProjectsAndCollabs,
     saveSetup,
     showHistory,
+    setHistoryFilter,
     undoTask,
     handleHistoryBgTap
   };
