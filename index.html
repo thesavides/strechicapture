@@ -706,10 +706,10 @@ RULES:
 - Keep content concise but complete (action verb + object)
 - description field: brief context about why the task exists. Always attribute to the correct person — the speaker is ${speakerName}, so use their name, not someone else's.
 
-Return ONLY valid JSON, no other text:
-{"content":"action verb + object e.g. Send quotation to Mr Smith","description":"only verbatim specifics e.g. customer name, ref number — leave blank if nothing specific was said","assignee":"person name","project":"exact project name from list above","due_date":"natural language date e.g. tomorrow, next Wednesday, 2026-04-25","labels":["@label1","@label2"],"confidence":"high/medium/low"}
+If the input contains multiple distinct actions or assignees, create a separate task object for each. Return ONLY a valid JSON array — even for a single task:
+[{"content":"action verb + object","description":"brief context attributed to ${speakerName}","assignee":"person name","project":"exact project name","due_date":"natural language date","labels":["@label1"],"confidence":"high/medium/low"}]
 
-If confidence is low, set the first label to @luan-review so Luan manually checks it.`;
+If confidence is low on any task, add @luan-review to its labels.`;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -850,38 +850,42 @@ const App = (() => {
     }
 
     recognition = new SR();
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = 'en-ZA'; // South African English
+    recognition.lang = 'en-ZA';
 
     recognition.onstart = () => {
       isRecording = true;
-      setStatus('Listening…');
+      setStatus('Listening… tap again to stop');
       document.getElementById('mic-btn').classList.add('recording');
       document.getElementById('mic-ring').classList.add('pulse');
       document.getElementById('transcript-text').textContent = '';
     };
 
     recognition.onresult = (e) => {
-      const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
-      document.getElementById('transcript-text').textContent = transcript;
-      if (e.results[e.results.length - 1].isFinal) {
-        stopMic();
-        parseThroughClaude(transcript);
+      // Accumulate all results (continuous mode)
+      let transcript = '';
+      for (let i = 0; i < e.results.length; i++) {
+        transcript += e.results[i][0].transcript + ' ';
       }
+      document.getElementById('transcript-text').textContent = transcript.trim();
     };
 
     recognition.onerror = (e) => {
-      stopMic();
       if (e.error === 'not-allowed') {
-        toast('Microphone blocked. Enable it in Settings → Safari → Microphone.');
-      } else if (e.error !== 'no-speech') {
-        toast('Speech error: ' + e.error + '. Try again.');
+        stopMic();
+        toast('Microphone blocked. Enable it in Settings.');
+        setStatus('Tap to speak');
       }
-      setStatus('Tap to speak');
+      // ignore no-speech and other transient errors in continuous mode
     };
 
-    recognition.onend = () => { if (isRecording) stopMic(); };
+    // Auto-restart if browser times out mid-recording (allows natural pauses)
+    recognition.onend = () => {
+      if (isRecording) {
+        try { recognition.start(); } catch {}
+      }
+    };
   }
 
   function toggleMic() {
@@ -893,7 +897,14 @@ const App = (() => {
     if (!navigator.onLine) { toast('Internet required for task parsing.'); return; }
 
     if (isRecording) {
+      // Manual stop — grab transcript and parse
+      isRecording = false;
       recognition.stop();
+      const transcript = document.getElementById('transcript-text').textContent.trim();
+      document.getElementById('mic-btn').classList.remove('recording');
+      document.getElementById('mic-ring').classList.remove('pulse');
+      if (transcript) parseThroughClaude(transcript);
+      else setStatus('Tap to speak');
     } else {
       try { recognition.start(); }
       catch { toast('Could not start microphone. Try again.'); }
@@ -935,7 +946,7 @@ const App = (() => {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-5',
-          max_tokens: 400,
+          max_tokens: 1200,
           messages: [{ role: 'user', content: buildSystemPrompt(cfg.user_name || 'Unknown') + '\n\nUser said: ' + transcript }]
         })
       });
@@ -948,13 +959,13 @@ const App = (() => {
       const data = await resp.json();
       const rawText = data.content[0].text.trim();
 
-      let task;
+      let tasks;
       try {
         const jsonStr = rawText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-        task = JSON.parse(jsonStr);
+        const parsed = JSON.parse(jsonStr);
+        tasks = Array.isArray(parsed) ? parsed : [parsed];
       } catch {
-        toast('Could not parse response — creating with @luan-review.');
-        task = {
+        tasks = [{
           content: transcript,
           description: '',
           assignee: 'Luan',
@@ -962,11 +973,23 @@ const App = (() => {
           due_date: 'tomorrow',
           labels: ['@luan-review'],
           confidence: 'low'
-        };
+        }];
+      }
+
+      setStatus('Creating ' + tasks.length + ' task' + (tasks.length > 1 ? 's' : '') + '…');
+
+      const created = [];
+      for (const task of tasks) {
+        try {
+          await autoCreateTask(task);
+          created.push(task.content);
+        } catch (e) {
+          toast('Failed: ' + task.content + ' — ' + e.message);
+        }
       }
 
       setStatus('Tap to speak');
-      autoCreateTask(task);
+      if (created.length > 0) showSuccessScreen(created);
 
     } catch (e) {
       setStatus('Tap to speak');
@@ -1085,7 +1108,7 @@ const App = (() => {
       if (!created || !created.id) {
         throw new Error('Todoist returned no task ID — task may not have been created');
       }
-      if (navigator.vibrate) navigator.vibrate([40, 20, 40]);
+      if (navigator.vibrate) navigator.vibrate([20, 10, 20]);
 
       // Save to Supabase
       try {
@@ -1101,11 +1124,8 @@ const App = (() => {
         });
       } catch {}
 
-      showSuccessScreen(content);
-
     } catch (e) {
-      setStatus('Tap to speak');
-      toast('Failed to create task: ' + e.message);
+      throw e;
     }
   }
 
@@ -1186,10 +1206,14 @@ const App = (() => {
            d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
   }
 
-  function showSuccessScreen(taskName) {
+  function showSuccessScreen(taskNames) {
+    const names = Array.isArray(taskNames) ? taskNames : [taskNames];
     document.getElementById('confirm-card').classList.remove('open');
+    if (navigator.vibrate) navigator.vibrate([40, 20, 40]);
     setTimeout(() => {
-      document.getElementById('success-task-name').textContent = taskName;
+      const label = document.querySelector('#screen-success .success-label');
+      label.textContent = names.length > 1 ? names.length + ' tasks created' : 'Task created';
+      document.getElementById('success-task-name').textContent = names.join(' · ');
       showScreen('success');
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
