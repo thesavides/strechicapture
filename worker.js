@@ -15,7 +15,7 @@ export default {
       }
 
       const path = url.pathname.replace('/todoist/', '');
-      const target = `https://api.todoist.com/rest/v2/${path}${url.search}`;
+      const target = `https://api.todoist.com/api/v1/${path}${url.search}`;
 
       const resp = await fetch(target, {
         method: request.method,
