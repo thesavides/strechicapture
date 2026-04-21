@@ -530,18 +530,7 @@
 
   <div class="setup-scroll">
     <div class="setup-title">Setup</div>
-    <div class="setup-subtitle">Enter your API keys. They are stored only on this device and sent only to the respective APIs.</div>
-
-    <div class="setup-section-label">API Keys</div>
-
-    <div class="field">
-      <label class="field-label">Claude API Key</label>
-      <input class="field-input" id="setup-claude" type="password" placeholder="sk-ant-…" autocomplete="off">
-    </div>
-    <div class="field">
-      <label class="field-label">Todoist API Token</label>
-      <input class="field-input" id="setup-todoist" type="password" placeholder="Paste your token" autocomplete="off">
-    </div>
+    <div class="setup-subtitle">Map your Stretchi projects and team to Todoist. This only needs to be done once.</div>
 
     <button class="btn btn-primary full-btn mt16" id="load-btn" onclick="App.fetchProjectsAndCollabs()">
       Load Projects &amp; Team
@@ -629,10 +618,23 @@ const App = (() => {
   let toastTimer = null;
 
   // ── Boot ──────────────────────────────────────────────────
-  function init() {
-    cfg = loadCfg();
+  async function init() {
+    cfg = loadCfg() || {};
     setupPWA();
     watchOnline();
+
+    // Fetch server-side config (keys stored in Cloudflare secrets)
+    try {
+      const res = await fetch('/config');
+      if (res.ok) {
+        const serverCfg = await res.json();
+        cfg.claude_api_key  = serverCfg.claude_api_key  || cfg.claude_api_key;
+        cfg.todoist_token   = serverCfg.todoist_token   || cfg.todoist_token;
+        cfg.supabase_url    = serverCfg.supabase_url    || cfg.supabase_url;
+        cfg.supabase_anon_key = serverCfg.supabase_anon_key || cfg.supabase_anon_key;
+        storeCfg(cfg);
+      }
+    } catch {}
 
     if (cfg && cfg.setup_complete) {
       showScreen('main');
@@ -974,10 +976,6 @@ const App = (() => {
     showScreen('setup');
     document.getElementById('back-btn').classList.toggle('hidden', !(cfg && cfg.setup_complete));
 
-    if (cfg) {
-      document.getElementById('setup-claude').value   = cfg.claude_api_key || '';
-      document.getElementById('setup-todoist').value  = cfg.todoist_token  || '';
-    }
   }
 
   function backFromSetup() {
@@ -985,10 +983,7 @@ const App = (() => {
   }
 
   async function fetchProjectsAndCollabs() {
-    const claudeKey    = document.getElementById('setup-claude').value.trim();
-    const todoistToken = document.getElementById('setup-todoist').value.trim();
-
-    if (!todoistToken) { toast('Todoist API token is required.'); return; }
+    if (!cfg.todoist_token) { toast('Server config not loaded. Try refreshing.'); return; }
 
     const btn = document.getElementById('load-btn');
     btn.disabled = true;
@@ -1085,11 +1080,6 @@ const App = (() => {
   }
 
   function saveSetup() {
-    const claudeKey    = document.getElementById('setup-claude').value.trim();
-    const todoistToken = document.getElementById('setup-todoist').value.trim();
-
-    if (!todoistToken) { toast('Todoist token is required.'); return; }
-
     const projectMap = {};
     STRETCHI_PROJECTS.forEach(name => {
       const sel = document.getElementById('pmap-' + slug(name));
@@ -1103,8 +1093,7 @@ const App = (() => {
     });
 
     storeCfg({
-      claude_api_key: claudeKey,
-      todoist_token:  todoistToken,
+      ...cfg,
       project_map:    projectMap,
       assignee_map:   assigneeMap,
       setup_complete: true
