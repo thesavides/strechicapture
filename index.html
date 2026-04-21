@@ -916,7 +916,7 @@ const App = (() => {
     if (assigneeId) body.assignee_id = parseInt(assigneeId, 10);
 
     try {
-      const resp = await fetch('https://api.todoist.com/rest/v2/tasks', {
+      const resp = await fetch('/todoist/tasks', {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + cfg.todoist_token,
@@ -995,7 +995,7 @@ const App = (() => {
     btn.innerHTML = '<span class="spinner"></span>Loading…';
 
     try {
-      const projResp = await fetch('https://api.todoist.com/rest/v2/projects', {
+      const projResp = await fetch('/todoist/projects', {
         headers: { 'Authorization': 'Bearer ' + todoistToken }
       });
       if (!projResp.ok) throw new Error('Invalid Todoist token (status ' + projResp.status + ').');
@@ -1005,7 +1005,7 @@ const App = (() => {
       todoistCollabs = {};
       await Promise.all(todoistProjects.map(async (proj) => {
         try {
-          const cr = await fetch(`https://api.todoist.com/rest/v2/projects/${proj.id}/collaborators`, {
+          const cr = await fetch(`/todoist/projects/${proj.id}/collaborators`, {
             headers: { 'Authorization': 'Bearer ' + todoistToken }
           });
           if (cr.ok) {
