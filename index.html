@@ -852,11 +852,10 @@ const App = (() => {
     }
 
     recognition = new SR();
-    recognition.continuous = true;
+    recognition.continuous = false;   // single-utterance; we restart manually
     recognition.interimResults = true;
     recognition.lang = 'en-ZA';
 
-    // onstart only updates UI — does NOT clear transcript (restarts reuse it)
     recognition.onstart = () => {
       setStatus('Listening… tap again to stop');
       document.getElementById('mic-btn').classList.add('recording');
@@ -864,13 +863,18 @@ const App = (() => {
     };
 
     recognition.onresult = (e) => {
-      // Build session text from all results in this recognition session
-      let sessionText = '';
+      // Show accumulated text + live interim from this utterance only
+      let utterance = '';
       for (let i = 0; i < e.results.length; i++) {
-        sessionText += e.results[i][0].transcript;
+        utterance += e.results[i][0].transcript;
       }
       document.getElementById('transcript-text').textContent =
-        (accumulatedTranscript + sessionText).trim();
+        (accumulatedTranscript + utterance).trim();
+
+      // When this utterance is final, commit it to the accumulator
+      if (e.results[e.results.length - 1].isFinal) {
+        accumulatedTranscript = document.getElementById('transcript-text').textContent + ' ';
+      }
     };
 
     recognition.onerror = (e) => {
@@ -879,14 +883,12 @@ const App = (() => {
         toast('Microphone blocked. Enable it in Settings.');
         setStatus('Tap to speak');
       }
-      // ignore no-speech and other transient errors in continuous mode
+      // ignore no-speech — we restart in onend anyway
     };
 
-    // Auto-restart on browser timeout — save transcript first so it's not lost
+    // Restart after each utterance so pauses don't end the session
     recognition.onend = () => {
       if (isRecording) {
-        accumulatedTranscript = document.getElementById('transcript-text').textContent;
-        if (accumulatedTranscript) accumulatedTranscript += ' ';
         try { recognition.start(); } catch {}
       }
     };
