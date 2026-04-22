@@ -1,21 +1,73 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="100" fill="#0d0d0d"/>
+  <defs>
+    <clipPath id="mc">
+      <ellipse cx="256" cy="228" rx="44" ry="56"/>
+    </clipPath>
+  </defs>
 
-  <!-- Stretchi tent silhouette -->
-  <path d="M 256,26 C 208,74 156,112 96,152" stroke="white" stroke-width="15" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M 256,26 C 304,74 356,112 416,152" stroke="white" stroke-width="15" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M 96,152 C 48,218 24,298 10,394" stroke="white" stroke-width="13" fill="none" stroke-linecap="round"/>
-  <path d="M 416,152 C 464,218 488,298 502,394" stroke="white" stroke-width="13" fill="none" stroke-linecap="round"/>
-  <path d="M 96,152 C 148,186 202,208 256,218" stroke="white" stroke-width="12" fill="none" stroke-linecap="round"/>
-  <path d="M 416,152 C 364,186 310,208 256,218" stroke="white" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <!-- Background -->
+  <rect width="512" height="512" rx="76" fill="#0a0a0a"/>
 
-  <!-- Red mic circle -->
-  <circle cx="256" cy="342" r="90" fill="#e94560"/>
-  <rect x="232" y="288" width="48" height="80" rx="24" fill="white"/>
-  <path d="M 214,342 a42,42 0 0 0 84,0" stroke="white" stroke-width="10" fill="none" stroke-linecap="round"/>
-  <line x1="256" y1="384" x2="256" y2="406" stroke="white" stroke-width="10" stroke-linecap="round"/>
-  <line x1="230" y1="406" x2="282" y2="406" stroke="white" stroke-width="10" stroke-linecap="round"/>
+  <!--
+    White tent silhouette — solid filled shape.
+    Shape reads clockwise from top-centre peak:
+      • Smooth right-inner slope to (352,138)
+      • Sharp L up-right to RIGHT EAR TIP (418,112)   ← pointed spike
+      • Sharp L down-right to (462,162)
+      • Curve down/inward along outer right drape
+      • Sweep along bottom to centre opening
+      • Mirror left side
+  -->
+  <path d="
+    M 256,46
+    C 298,72 332,104 354,136
+    L 418,112
+    L 464,160
+    C 484,196 488,234 482,270
+    C 474,304 452,324 422,330
+    C 392,338 356,334 322,329
+    C 296,325 272,314 256,298
+    C 240,314 216,325 190,329
+    C 156,334 120,338 90,330
+    C 60,324 38,304 30,270
+    C 24,234 28,196 48,160
+    L 94,112
+    L 158,136
+    C 180,104 214,72 256,46 Z
+  " fill="white"/>
 
-  <!-- Label -->
-  <text x="256" y="490" font-family="Arial Black, Arial, sans-serif" font-size="38" font-weight="900" fill="white" text-anchor="middle" letter-spacing="4">STRETCHI TALK</text>
+  <!-- Black tent panel lines drawn over the white fill -->
+  <!-- Ridge cables: peak → each ear tip -->
+  <line x1="256" y1="46" x2="418" y2="112" stroke="#0a0a0a" stroke-width="11" stroke-linecap="round"/>
+  <line x1="256" y1="46" x2="94" y2="112"  stroke="#0a0a0a" stroke-width="11" stroke-linecap="round"/>
+  <!-- Right inner panel seam -->
+  <path d="M 256,50 C 273,98 285,162 290,228 C 293,264 290,292 281,314"
+        stroke="#0a0a0a" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <!-- Left inner panel seam (mirror) -->
+  <path d="M 256,50 C 239,98 227,162 222,228 C 219,264 222,292 231,314"
+        stroke="#0a0a0a" stroke-width="8" fill="none" stroke-linecap="round"/>
+
+  <!-- Red microphone in tent opening -->
+  <!-- Capsule oval -->
+  <ellipse cx="256" cy="228" rx="44" ry="56" fill="#c41a1a"/>
+  <!-- Grille horizontal lines clipped to capsule -->
+  <g clip-path="url(#mc)">
+    <line x1="205" y1="198" x2="307" y2="198" stroke="#e04444" stroke-width="5"/>
+    <line x1="205" y1="212" x2="307" y2="212" stroke="#e04444" stroke-width="5"/>
+    <line x1="205" y1="226" x2="307" y2="226" stroke="#e04444" stroke-width="5"/>
+    <line x1="205" y1="240" x2="307" y2="240" stroke="#e04444" stroke-width="5"/>
+    <line x1="205" y1="254" x2="307" y2="254" stroke="#e04444" stroke-width="5"/>
+    <line x1="205" y1="268" x2="307" y2="268" stroke="#e04444" stroke-width="5"/>
+  </g>
+  <!-- Neck / stem -->
+  <rect x="245" y="284" width="22" height="26" rx="4" fill="#c41a1a"/>
+  <!-- Base ring / cup -->
+  <path d="M 222,318 Q 222,342 256,346 Q 290,342 290,318 Z" fill="#c41a1a"/>
+  <ellipse cx="256" cy="318" rx="34" ry="11" fill="#c41a1a"/>
+
+  <!-- STRETCHI label -->
+  <text x="256" y="430"
+        font-family="'Arial Black', Impact, 'Helvetica Neue', sans-serif"
+        font-size="64" font-weight="900"
+        fill="white" text-anchor="middle" letter-spacing="3">STRETCHI</text>
 </svg>
