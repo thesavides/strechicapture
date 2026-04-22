@@ -698,8 +698,9 @@ LABELS (use one or more, exact spelling):
 @urgent, @customer-waiting, @supplier, @luan-review, @factory-floor, @quote, @rental, @eu
 
 RULES:
-- The person speaking is ${speakerName} — they are creating this task, not being assigned it
-- If no assignee is obvious, default to "Luan"
+- The person speaking is ${speakerName} — they are creating tasks, not being assigned them
+- If no assignee is obvious, default to the most relevant team member based on the project; only default to "Luan" for decisions or approvals he personally owns
+- CRITICAL: If the input mentions more than one action, person, or subject — create a SEPARATE task object for each. Do not merge multiple actions into one task.
 - If no due date is stated, default to "tomorrow"
 - If no project is obvious, default to "Luan Direct"
 - Always include at least one label
@@ -954,7 +955,8 @@ const App = (() => {
         body: JSON.stringify({
           model: 'claude-sonnet-4-5',
           max_tokens: 1200,
-          messages: [{ role: 'user', content: buildSystemPrompt(cfg.user_name || 'Unknown') + '\n\nUser said: ' + transcript }]
+          system: buildSystemPrompt(cfg.user_name || 'Unknown'),
+          messages: [{ role: 'user', content: transcript }]
         })
       });
 
