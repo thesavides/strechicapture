@@ -1,0 +1,7 @@
+.git
+.claude
+.DS_Store
+.wrangler
+secrets
+node_modules
+*.save
