@@ -724,6 +724,7 @@ const App = (() => {
   let todoistCollabs = {};   // id → {id, name, email}
   let toastTimer = null;
   let historyFilterMine = false;
+  let accumulatedTranscript = '';
 
   // ── Boot ──────────────────────────────────────────────────
   async function init() {
@@ -854,21 +855,21 @@ const App = (() => {
     recognition.interimResults = true;
     recognition.lang = 'en-ZA';
 
+    // onstart only updates UI — does NOT clear transcript (restarts reuse it)
     recognition.onstart = () => {
-      isRecording = true;
       setStatus('Listening… tap again to stop');
       document.getElementById('mic-btn').classList.add('recording');
       document.getElementById('mic-ring').classList.add('pulse');
-      document.getElementById('transcript-text').textContent = '';
     };
 
     recognition.onresult = (e) => {
-      // Accumulate all results (continuous mode)
-      let transcript = '';
+      // Build session text from all results in this recognition session
+      let sessionText = '';
       for (let i = 0; i < e.results.length; i++) {
-        transcript += e.results[i][0].transcript + ' ';
+        sessionText += e.results[i][0].transcript;
       }
-      document.getElementById('transcript-text').textContent = transcript.trim();
+      document.getElementById('transcript-text').textContent =
+        (accumulatedTranscript + sessionText).trim();
     };
 
     recognition.onerror = (e) => {
@@ -880,9 +881,11 @@ const App = (() => {
       // ignore no-speech and other transient errors in continuous mode
     };
 
-    // Auto-restart if browser times out mid-recording (allows natural pauses)
+    // Auto-restart on browser timeout — save transcript first so it's not lost
     recognition.onend = () => {
       if (isRecording) {
+        accumulatedTranscript = document.getElementById('transcript-text').textContent;
+        if (accumulatedTranscript) accumulatedTranscript += ' ';
         try { recognition.start(); } catch {}
       }
     };
@@ -897,7 +900,7 @@ const App = (() => {
     if (!navigator.onLine) { toast('Internet required for task parsing.'); return; }
 
     if (isRecording) {
-      // Manual stop — grab transcript and parse
+      // Manual stop — grab full transcript and parse
       isRecording = false;
       recognition.stop();
       const transcript = document.getElementById('transcript-text').textContent.trim();
@@ -906,8 +909,12 @@ const App = (() => {
       if (transcript) parseThroughClaude(transcript);
       else setStatus('Tap to speak');
     } else {
+      // Fresh start — reset accumulator and transcript display
+      accumulatedTranscript = '';
+      document.getElementById('transcript-text').textContent = '';
+      isRecording = true;
       try { recognition.start(); }
-      catch { toast('Could not start microphone. Try again.'); }
+      catch { isRecording = false; toast('Could not start microphone. Try again.'); }
     }
   }
 
