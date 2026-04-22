@@ -1,57 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <clipPath id="mc">
-      <rect x="212" y="185" width="88" height="108" rx="44"/>
-    </clipPath>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="40" fill="#0d0d0d"/>
 
-  <!-- Background -->
-  <rect width="512" height="512" rx="82" fill="#0d0d0d"/>
+  <!-- Stretchi tent silhouette — two-peaked stretch tent outline -->
+  <!-- Left shoulder ridge from apex -->
+  <path d="M 96,10 C 78,28 58,42 36,57" stroke="white" stroke-width="5.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right shoulder ridge from apex -->
+  <path d="M 96,10 C 114,28 134,42 156,57" stroke="white" stroke-width="5.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Left outer fabric drape — sweeps wide -->
+  <path d="M 36,57 C 18,82 9,112 4,148" stroke="white" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- Right outer fabric drape -->
+  <path d="M 156,57 C 174,82 183,112 188,148" stroke="white" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- Left inner fabric — shoulder to centre saddle -->
+  <path d="M 36,57 C 56,70 76,78 96,82" stroke="white" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+  <!-- Right inner fabric — shoulder to centre saddle -->
+  <path d="M 156,57 C 136,70 116,78 96,82" stroke="white" stroke-width="4.5" fill="none" stroke-linecap="round"/>
 
-  <!-- White tent silhouette -->
-  <path d="
-    M 256,44
-    C 308,74 372,106 416,128
-    L 450,148
-    C 474,164 492,196 492,238
-    C 492,270 474,298 450,312
-    C 426,322 392,320 358,315
-    C 326,310 292,303 268,297
-    L 256,285
-    L 244,297
-    C 220,303 186,310 154,315
-    C 120,320 86,322 62,312
-    C 38,298 20,270 20,238
-    C 20,196 38,164 62,148
-    L 96,128
-    C 140,106 204,74 256,44 Z
-  " fill="white"/>
+  <!-- Red mic circle -->
+  <circle cx="96" cy="128" r="34" fill="#e94560"/>
+  <rect x="87" y="108" width="18" height="30" rx="9" fill="white"/>
+  <path d="M 80,128 a16,16 0 0 0 32,0" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <line x1="96" y1="144" x2="96" y2="152" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <line x1="86" y1="152" x2="106" y2="152" stroke="white" stroke-width="4" stroke-linecap="round"/>
 
-  <!-- Tent panel lines -->
-  <line x1="256" y1="44" x2="450" y2="148" stroke="#0d0d0d" stroke-width="11" stroke-linecap="round"/>
-  <line x1="256" y1="44" x2="62" y2="148" stroke="#0d0d0d" stroke-width="11" stroke-linecap="round"/>
-  <path d="M 256,44 C 280,84 302,134 308,178 C 313,212 310,252 298,282"
-        stroke="#0d0d0d" stroke-width="7" stroke-linecap="round" fill="none"/>
-  <path d="M 256,44 C 232,84 210,134 204,178 C 199,212 202,252 214,282"
-        stroke="#0d0d0d" stroke-width="7" stroke-linecap="round" fill="none"/>
-
-  <!-- Red microphone -->
-  <rect x="212" y="185" width="88" height="108" rx="44" fill="#c91e1e"/>
-  <g clip-path="url(#mc)">
-    <line x1="204" y1="207" x2="308" y2="207" stroke="#e85555" stroke-width="5"/>
-    <line x1="204" y1="221" x2="308" y2="221" stroke="#e85555" stroke-width="5"/>
-    <line x1="204" y1="235" x2="308" y2="235" stroke="#e85555" stroke-width="5"/>
-    <line x1="204" y1="249" x2="308" y2="249" stroke="#e85555" stroke-width="5"/>
-    <line x1="204" y1="263" x2="308" y2="263" stroke="#e85555" stroke-width="5"/>
-    <line x1="204" y1="277" x2="308" y2="277" stroke="#e85555" stroke-width="5"/>
-  </g>
-  <rect x="244" y="293" width="24" height="34" fill="#c91e1e"/>
-  <circle cx="256" cy="348" r="22" fill="none" stroke="#c91e1e" stroke-width="14"/>
-  <line x1="256" y1="327" x2="256" y2="364" stroke="#c91e1e" stroke-width="14" stroke-linecap="round"/>
-
-  <!-- STRETCHI label -->
-  <text x="256" y="434"
-        font-family="'Arial Black', Impact, 'Helvetica Neue', sans-serif"
-        font-size="64" font-weight="900" fill="white"
-        text-anchor="middle" letter-spacing="4">STRETCHI</text>
+  <!-- Label -->
+  <text x="96" y="184" font-family="Arial Black, Arial, sans-serif" font-size="12.5" font-weight="900" fill="white" text-anchor="middle" letter-spacing="1.5">STRETCHI TALK</text>
 </svg>
