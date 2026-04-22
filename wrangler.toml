@@ -3,5 +3,4 @@ compatibility_date = "2026-04-21"
 main = "worker.js"
 
 [assets]
-directory = "."
-exclude = [".git/**", ".claude/**", ".wrangler/**", "secrets/**", ".DS_Store", "*.save", "node_modules/**"]
+directory = "public"
